@@ -46,7 +46,6 @@
 <script src="../src/misc/sigma.misc.bindDOMEvents.js"></script>
 <script src="../src/misc/sigma.misc.drawHovers.js"></script>
 <!-- END SIGMA IMPORTS -->
-<script src="../plugins/sigma.plugins.dragNodes/sigma.plugins.dragNodes.js"></script>
 <div id="container">
   <style>
     #graph-container {
@@ -56,72 +55,100 @@
       right: 0;
       position: absolute;
     }
-
-    #sidebar {
-      bottom: 0;
-      right: 0;
-      width: 200px;
-      height: 150px;
-      position: absolute;
-      background-color: #999;
-      padding: 10px;
-    }
   </style>
   <div id="graph-container"></div>
-  <div id="sidebar">This area is not a drop target.</div>
 </div>
+<script src="../plugins/sigma.plugins.animate/sigma.plugins.animate.js"></script>
+<script src="../plugins/sigma.layout.noverlap/sigma.layout.noverlap.js"></script>
 <script>
 /**
- * This example shows how to use the dragNodes plugin.
+ * Just a simple example to show how to use the sigma.layout.noverlap
+ * plugin:
+ *
+ * A random graph is generated. Noverlap is then run.
  */
 var i,
     s,
-    N = 100,
+    o,
+    N = 5000,
     E = 500,
+    C = 5,
+    d = 0.5,
+    cs = [],
     g = {
       nodes: [],
       edges: []
     };
 
-// Generate a random graph:
-for (i = 0; i < N; i++)
+// Generate the graph:
+for (i = 0; i < C; i++)
+  cs.push({
+    id: i,
+    nodes: [],
+    color: '#' + (
+      Math.floor(Math.random() * 16777215).toString(16) + '000000'
+    ).substr(0, 6)
+  });
+
+for (i = 0; i < N; i++) {
+  o = cs[(Math.random() * C) | 0];
   g.nodes.push({
     id: 'n' + i,
-    label: 'Node ' + i,
+    label: 'Node' + i,
     x: Math.random(),
     y: Math.random(),
     size: Math.random(),
-    color: '#666'
+    color: o.color
   });
+  o.nodes.push('n' + i);
+}
 
-for (i = 0; i < E; i++)
-  g.edges.push({
-    id: 'e' + i,
-    source: 'n' + (Math.random() * N | 0),
-    target: 'n' + (Math.random() * N | 0),
-    size: Math.random(),
-    color: '#ccc'
-  });
-// sigma.renderers.def = sigma.renderers.canvas
-// Instantiate sigma:
+for (i = 0; i < E; i++) {
+  if (Math.random() < 1 - d)
+    g.edges.push({
+      id: 'e' + i,
+      source: 'n' + ((Math.random() * N) | 0),
+      target: 'n' + ((Math.random() * N) | 0)
+    });
+  else {
+    o = cs[(Math.random() * C) | 0]
+    g.edges.push({
+      id: 'e' + i,
+      source: o.nodes[(Math.random() * o.nodes.length) | 0],
+      target: o.nodes[(Math.random() * o.nodes.length) | 0]
+    });
+  }
+}
+
 s = new sigma({
   graph: g,
-  container: 'graph-container'
+  container: 'graph-container',
+  settings: {
+    minNodeSize: 4,
+    maxNodeSize: 2,
+    minEdgeSize: 1,
+    maxEdgeSize: 1
+  }
 });
 
-// Initialize the dragNodes plugin:
-var dragListener = sigma.plugins.dragNodes(s, s.renderers[0]);
-
-dragListener.bind('startdrag', function(event) {
-  console.log(event);
+// Configure the noverlap layout:
+var noverlapListener = s.configNoverlap({
+  nodeMargin: 0.1,
+  scaleNodes: 1.05,
+  gridSize: 75,
+  easing: 'quadraticInOut', // animation transition function
+  duration: 10000   // animation duration. Long here for the purposes of this example only
 });
-dragListener.bind('drag', function(event) {
-  console.log(event);
+// Bind the events:
+noverlapListener.bind('start stop interpolate', function(e) {
+  console.log(e.type);
+  if(e.type === 'start') {
+    console.time('noverlap');
+  }
+  if(e.type === 'interpolate') {
+    console.timeEnd('noverlap');
+  }
 });
-dragListener.bind('drop', function(event) {
-  console.log(event);
-});
-dragListener.bind('dragend', function(event) {
-  console.log(event);
-});
+// Start the layout:
+s.startNoverlap();
 </script>
